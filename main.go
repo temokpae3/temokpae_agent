@@ -13,71 +13,30 @@ import (
 )
 
 // Define a struct to store the collected data
-type APIData struct {
-	LargeCapsules []interface{} `json:"large_capsules"`
-	FeaturedWin   []struct {
-		ID                      int    `json:"id"`
-		Type                    int    `json:"type"`
-		Name                    string `json:"name"`
-		Discounted              bool   `json:"discounted"`
-		DiscountPercent         int    `json:"discount_percent"`
-		OriginalPrice           int    `json:"original_price"`
-		FinalPrice              int    `json:"final_price"`
-		Currency                string `json:"currency"`
-		LargeCapsuleImage       string `json:"large_capsule_image"`
-		SmallCapsuleImage       string `json:"small_capsule_image"`
-		WindowsAvailable        bool   `json:"windows_available"`
-		MacAvailable            bool   `json:"mac_available"`
-		LinuxAvailable          bool   `json:"linux_available"`
-		StreamingvideoAvailable bool   `json:"streamingvideo_available"`
-		DiscountExpiration      int    `json:"discount_expiration,omitempty"`
-		HeaderImage             string `json:"header_image"`
-		ControllerSupport       string `json:"controller_support,omitempty"`
-	} `json:"featured_win"`
-	FeaturedMac []struct {
-		ID                      int    `json:"id"`
-		Type                    int    `json:"type"`
-		Name                    string `json:"name"`
-		Discounted              bool   `json:"discounted"`
-		DiscountPercent         int    `json:"discount_percent"`
-		OriginalPrice           int    `json:"original_price"`
-		FinalPrice              int    `json:"final_price"`
-		Currency                string `json:"currency"`
-		LargeCapsuleImage       string `json:"large_capsule_image"`
-		SmallCapsuleImage       string `json:"small_capsule_image"`
-		WindowsAvailable        bool   `json:"windows_available"`
-		MacAvailable            bool   `json:"mac_available"`
-		LinuxAvailable          bool   `json:"linux_available"`
-		StreamingvideoAvailable bool   `json:"streamingvideo_available"`
-		DiscountExpiration      int    `json:"discount_expiration,omitempty"`
-		HeaderImage             string `json:"header_image"`
-		ControllerSupport       string `json:"controller_support,omitempty"`
-	} `json:"featured_mac"`
-	FeaturedLinux []struct {
-		ID                      int         `json:"id"`
-		Type                    int         `json:"type"`
-		Name                    string      `json:"name"`
-		Discounted              bool        `json:"discounted"`
-		DiscountPercent         int         `json:"discount_percent"`
-		OriginalPrice           interface{} `json:"original_price"`
-		FinalPrice              int         `json:"final_price"`
-		Currency                string      `json:"currency"`
-		LargeCapsuleImage       string      `json:"large_capsule_image"`
-		SmallCapsuleImage       string      `json:"small_capsule_image"`
-		WindowsAvailable        bool        `json:"windows_available"`
-		MacAvailable            bool        `json:"mac_available"`
-		LinuxAvailable          bool        `json:"linux_available"`
-		StreamingvideoAvailable bool        `json:"streamingvideo_available"`
-		HeaderImage             string      `json:"header_image"`
-		DiscountExpiration      int         `json:"discount_expiration,omitempty"`
-		ControllerSupport       string      `json:"controller_support,omitempty"`
-	} `json:"featured_linux"`
-	Layout string `json:"layout"`
-	Status int    `json:"status"`
+type APIData []struct {
+	InternalName       string `json:"internalName"`
+	Title              string `json:"title"`
+	MetacriticLink     string `json:"metacriticLink"`
+	DealID             string `json:"dealID"`
+	StoreID            string `json:"storeID"`
+	GameID             string `json:"gameID"`
+	SalePrice          string `json:"salePrice"`
+	NormalPrice        string `json:"normalPrice"`
+	IsOnSale           string `json:"isOnSale"`
+	Savings            string `json:"savings"`
+	MetacriticScore    string `json:"metacriticScore"`
+	SteamRatingText    string `json:"steamRatingText"`
+	SteamRatingPercent string `json:"steamRatingPercent"`
+	SteamRatingCount   string `json:"steamRatingCount"`
+	SteamAppID         string `json:"steamAppID"`
+	ReleaseDate        int    `json:"releaseDate"`
+	LastChange         int    `json:"lastChange"`
+	DealRating         string `json:"dealRating"`
+	Thumb              string `json:"thumb"`
 }
 
 func pollData() {
-	// Tag + client init for Loggly
+	// load .env file, and client init for Loggly
 	client := loggly.New("LogglyToken")
 
 	// Call CheapShark API
@@ -89,19 +48,19 @@ func pollData() {
 
 	defer resp.Body.Close()
 
-	// Read the response body
+	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		client.EchoSend("error", "Failed with error: "+err.Error())
 	}
 
-	// Parse the JSON and display some info to the terminal
+	// Parse JSON and display info in the terminal
 	var apidata APIData
 	json.Unmarshal(body, &apidata)
 	formattedData, _ := json.MarshalIndent(apidata, "", "  ")
 	fmt.Println(string(formattedData))
 
-	// Send success message to loggly with response size
+	// Send a success message to loggly
 	var respSize string = strconv.Itoa(len(body))
 	logErr := client.EchoSend("info", "Successful data collection of size: "+respSize)
 	if logErr != nil {
