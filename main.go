@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/jamespearly/loggly"
+	"github.com/joho/godotenv"
 )
 
 // Define a struct to store the collected data
@@ -37,7 +39,12 @@ type APIData []struct {
 
 func pollData() {
 	// load .env file, and client init for Loggly
-	client := loggly.New("LogglyToken")
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Error loading.env file")
+	}
+
+	client := loggly.New(os.Getenv("LOGGLY_TOKEN"))
 
 	// Call CheapShark API
 	resp, err := http.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1&pageSize=10")
