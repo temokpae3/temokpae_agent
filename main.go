@@ -39,8 +39,8 @@ type APIData []struct {
 
 func pollData() {
 	// load the .env file and client init for Loggly
-	err := godotenv.Load()
-	if err != nil {
+	load := godotenv.Load()
+	if load != nil {
 		fmt.Println("Error loading.env file")
 	}
 
@@ -71,7 +71,7 @@ func pollData() {
 	var respSize string = strconv.Itoa(len(body))
 	log := client.EchoSend("info", "Successful data collection of size: "+respSize)
 	if log != nil {
-		fmt.Println("err: ", log)
+		fmt.Println("error", "Failed with error: "+log.Error())
 	}
 }
 
