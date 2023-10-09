@@ -61,7 +61,7 @@ func pollData() {
 		client.EchoSend("error", "Failed with error: "+err.Error())
 	}
 
-	// Parse JSON and display info in the terminal
+	// Parse the JSON and display info in the terminal
 	var apidata APIData
 	json.Unmarshal(body, &apidata)
 	formattedData, _ := json.MarshalIndent(apidata, "", "  ")
@@ -71,7 +71,7 @@ func pollData() {
 	var respSize string = strconv.Itoa(len(body))
 	log := client.EchoSend("info", "Successful data collection of size: "+respSize)
 	if log != nil {
-		fmt.Println("error", "Failed with error: "+log.Error())
+		client.EchoSend("error", "Failed with error: "+log.Error())
 	}
 }
 
