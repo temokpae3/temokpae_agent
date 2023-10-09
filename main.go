@@ -38,7 +38,7 @@ type APIData []struct {
 }
 
 func pollData() {
-	// load the .env file, and client init for Loggly
+	// load the .env file and client init for Loggly
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println("Error loading.env file")
