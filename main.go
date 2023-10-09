@@ -69,9 +69,9 @@ func pollData() {
 
 	// Send a success message to loggly
 	var respSize string = strconv.Itoa(len(body))
-	logErr := client.EchoSend("info", "Successful data collection of size: "+respSize)
-	if logErr != nil {
-		fmt.Println("err: ", logErr)
+	log := client.EchoSend("info", "Successful data collection of size: "+respSize)
+	if log != nil {
+		fmt.Println("err: ", log)
 	}
 }
 
