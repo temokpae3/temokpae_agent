@@ -3,6 +3,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/jamespearly/loggly"
-	"github.com/joho/godotenv"
 )
 
 // Define a struct to store the collected data
@@ -38,13 +38,10 @@ type APIData []struct {
 }
 
 func pollData() {
-	// load the .env file and client init for Loggly
-	load := godotenv.Load()
-	if load != nil {
-		fmt.Println("Error loading.env file")
-	}
+	// load the token and client init for Loggly
+	var token = flag.String("LOGGLY_TOKEN", "", "LOGGLY_TOKEN")
 
-	client := loggly.New(os.Getenv("LOGGLY_TOKEN"))
+	client := loggly.New(os.Getenv(*token))
 
 	// Call CheapShark API
 	resp, err := http.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1&pageSize=10")
@@ -76,7 +73,7 @@ func pollData() {
 }
 
 func main() {
-	for range time.Tick(time.Hour * 1) {
+	for range time.Tick(time.Minute * 1) {
 		pollData()
 	}
 }
