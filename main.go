@@ -73,7 +73,7 @@ func pollData() {
 }
 
 func main() {
-	for range time.Tick(time.Minute * 1) {
+	for range time.Tick(time.Hour * 1) {
 		pollData()
 	}
 }
