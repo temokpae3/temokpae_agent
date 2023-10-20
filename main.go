@@ -41,7 +41,7 @@ type APIData struct {
 	Thumb              string `json:"thumb"`
 }
 
-func throwLogError(msg string) {
+func LogglyError(msg string) {
 	// load the token and client init for Loggly
 	client := loggly.New(os.Getenv("LOGGLY_TOKEN"))
 	logErr := client.EchoSend("error", msg)
@@ -56,7 +56,7 @@ func pollData() {
 	// Call CheapShark API
 	resp, err := http.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1&pageSize=10")
 	if err != nil {
-		throwLogError("Could not pull the data from the CheapSharkAPI.")
+		LogglyError("Could not pull the data from the CheapSharkAPI.")
 		panic(err)
 	}
 
@@ -66,7 +66,7 @@ func pollData() {
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		throwLogError("Could not read the data from the CheapSharkAPI.")
+		LogglyError("Could not read the data from the CheapSharkAPI.")
 		log.Fatal(err)
 	}
 
@@ -182,6 +182,13 @@ func pollData() {
 
 	// Send a success message to DyanmoDB
 	fmt.Print("Successfully added to DynamoDB table\n")
+
+	// Send a Success message about DynamoDB to Loggly
+	log = client.EchoSend("info", "Entered all table input into database.")
+	if log != nil {
+		println(log)
+		return
+	}
 }
 
 func main() {
