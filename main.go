@@ -41,22 +41,15 @@ type APIData struct {
 	Thumb              string `json:"thumb"`
 }
 
-func LogglyError(msg string) {
-	// load the token and client init for Loggly
-	client := loggly.New(os.Getenv("LOGGLY_TOKEN"))
-	logErr := client.EchoSend("error", msg)
-	if logErr != nil {
-		os.Exit(1)
-	}
-}
-
 func pollData() {
 	fmt.Println("Starting...")
+
+	// Instantiate the Loggly client
+	client := loggly.New(os.Getenv("LOGGLY_TOKEN"))
 
 	// Call CheapShark API
 	resp, err := http.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1&pageSize=10")
 	if err != nil {
-		LogglyError("Could not pull the data from the CheapSharkAPI.")
 		panic(err)
 	}
 
@@ -66,14 +59,13 @@ func pollData() {
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		LogglyError("Could not read the data from the CheapSharkAPI.")
 		log.Fatal(err)
 	}
 
 	// Parse the JSON and display info in the terminal
-	var apidata APIData
+	var apidata []APIData
 	parsedata := json.Unmarshal(body, &apidata)
-	if err != nil {
+	if parsedata != nil {
 		log.Fatal(parsedata)
 	}
 
@@ -81,113 +73,55 @@ func pollData() {
 	fmt.Println(string(formattedData))
 
 	// Send a success message to loggly
-	client := loggly.New(os.Getenv("LOGGLY_TOKEN"))
 	var respSize string = strconv.Itoa(len(body))
 	log := client.EchoSend("info", "Successful data collection of size: "+respSize)
 	if log != nil {
-		client.EchoSend("error", "Failed with error: "+log.Error())
+		client.EchoSend("error", "Could not send data collection."+log.Error())
+		os.Exit(1)
 	}
 
 	// Initialize a AWS session
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String("us-east-1")},
+	)
 
-	// Create a DynamoDB client
-	svc := dynamodb.New(sess)
-
-	// Create item to be added to DynamoDB
-	av, err := dynamodbattribute.MarshalMap(apidata)
-	fmt.Printf("AV:\t%+v\n", av)
 	if err != nil {
-		fmt.Println("Got error marshalling item: ", err.Error())
+		client.EchoSend("error", "Got error initializing AWS: "+err.Error())
 		os.Exit(1)
 	}
+
+	// Create DynamoDB client
+	svc := dynamodb.New(sess)
 
 	//Input an item in test-table-temokpae
 	tableName := "test-table-temokpae"
 
-	_, err = svc.PutItem(&dynamodb.PutItemInput{
-		Item: map[string]*dynamodb.AttributeValue{
-			"InternalName": {
-				S: aws.String(apidata.InternalName),
-			},
-			"Title": {
-				S: aws.String(apidata.Title),
-			},
-			"MetacriticLink": {
-				S: aws.String(apidata.MetacriticLink),
-			},
-			"DealID": {
-				S: aws.String(apidata.DealID),
-			},
-			"StoreID": {
-				S: aws.String(apidata.StoreID),
-			},
-			"GameID": {
-				S: aws.String(apidata.GameID),
-			},
-			"SalePrice": {
-				S: aws.String(apidata.SalePrice),
-			},
-			"NormalPrice": {
-				S: aws.String(apidata.NormalPrice),
-			},
-			"IsOnSale": {
-				S: aws.String(apidata.IsOnSale),
-			},
-			"Savings": {
-				S: aws.String(apidata.Savings),
-			},
-			"MetacriticScore": {
-				S: aws.String(apidata.MetacriticScore),
-			},
-			"SteamRatingText": {
-				S: aws.String(apidata.SteamRatingText),
-			},
-			"SteamRatingPercent": {
-				S: aws.String(apidata.SteamRatingPercent),
-			},
-			"SteamRatingCount": {
-				S: aws.String(apidata.SteamRatingCount),
-			},
-			"SteamAppID": {
-				S: aws.String(apidata.SteamAppID),
-			},
-			"ReleaseDate": {
-				S: aws.String(apidata.ReleaseDate),
-			},
-			"LastChange": {
-				S: aws.String(apidata.LastChange),
-			},
-			"DealRating": {
-				S: aws.String(apidata.DealRating),
-			},
-			"Thumb": {
-				S: aws.String(apidata.Thumb),
-			},
-		},
-		TableName: aws.String(tableName),
-	})
+	// Create item to be added to DynamoDB
+	for _, item := range apidata {
+		av, err := dynamodbattribute.MarshalMap(item)
+		if err != nil {
+			client.EchoSend("error", "Got error marshalling map: "+err.Error())
+			os.Exit(1)
+		}
 
-	if err != nil {
-		fmt.Println("Could not make a DynamoDB table entry.")
-		os.Exit(1)
+		input := &dynamodb.PutItemInput{
+			Item:      av,
+			TableName: aws.String(tableName),
+		}
+
+		_, err = svc.PutItem(input)
+		if err != nil {
+			client.EchoSend("error", "Got error calling PutItem: "+err.Error())
+			os.Exit(1)
+		}
+
+		fmt.Println("Successfully added item to DynamoDB:", item.InternalName)
 	}
-
-	if err != nil {
-		fmt.Println("Got error calling PutItem: ", err.Error())
-		os.Exit(1)
-	}
-
-	// Send a success message to DyanmoDB
-	fmt.Print("Successfully added to DynamoDB table\n")
 
 	// Send a Success message about DynamoDB to Loggly
-	log = client.EchoSend("info", "Entered all table input into database.")
+	log = client.EchoSend("info", "Successfully added all the game data into DynamoDB.")
 	if log != nil {
-		println(log)
-		return
+		client.EchoSend("error", "Error adding game data into DynamoDB: "+log.Error())
 	}
 }
 
