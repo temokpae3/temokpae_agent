@@ -126,7 +126,6 @@ func pollData() {
 }
 
 func main() {
-	for range time.Tick(time.Minute * 1) {
-		pollData()
-	}
+	time.Sleep(15 * time.Minute)
+	pollData()
 }
