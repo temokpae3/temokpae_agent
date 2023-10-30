@@ -81,14 +81,12 @@ func pollData() {
 	}
 
 	// Initialize a AWS session
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String("us-east-1")},
-	)
-
-	if err != nil {
-		client.EchoSend("error", "Got error initializing AWS: "+err.Error())
-		os.Exit(1)
-	}
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		Config: aws.Config{
+			Region: aws.String("us-east-1"),
+		},
+		SharedConfigState: session.SharedConfigEnable,
+	}))
 
 	// Create DynamoDB client
 	svc := dynamodb.New(sess)
