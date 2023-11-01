@@ -48,7 +48,7 @@ func pollData() {
 	client := loggly.New(os.Getenv("LOGGLY_TOKEN"))
 
 	// Call CheapShark API
-	resp, err := http.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1&pageSize=10")
+	resp, err := http.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1&pageSize=30")
 	if err != nil {
 		panic(err)
 	}
