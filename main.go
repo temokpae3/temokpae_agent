@@ -164,14 +164,12 @@ func pollData() {
 }
 
 func main() {
-	// Start the polling loop
 	ticker := time.NewTicker(15 * time.Minute)
-	go func() {
-		for range ticker.C {
-			pollData()
-		}
-	}()
+	defer ticker.Stop()
 
-	// Keep the main goroutine running to prevent the program from exiting
+	for range ticker.C {
+		pollData()
+	}
+
 	select {}
 }
