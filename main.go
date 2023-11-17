@@ -164,12 +164,12 @@ func pollData() {
 }
 
 func main() {
-	ticker := time.NewTicker(15 * time.Minute)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		pollData()
-	}
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		for range ticker.C {
+			pollData()
+		}
+	}()
 
 	select {}
 }
