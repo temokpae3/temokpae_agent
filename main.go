@@ -165,7 +165,7 @@ func pollData() {
 
 func main() {
 	go func() {
-		ticker := time.NewTicker(1 * time.Minute)
+		ticker := time.NewTicker(15 * time.Minute)
 		for range ticker.C {
 			pollData()
 		}
