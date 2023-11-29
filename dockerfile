@@ -1,32 +1,33 @@
-## First stage - Build stage
-# Pull golang image from Dockerhub
-FROM golang:alpine AS builder
+# Start the Go app build
+FROM golang:latest AS build
 
-# Set up the working directory
-WORKDIR /temokpae_agent
+# Copy source
+WORKDIR /go/src/my-golang-source-code
+COPY . .
 
-# copy the source code and build
-COPY go.mod .
-COPY go.sum .
-COPY main.go .
+# Get required modules
+RUN go mod tidy
 
 # Build a statically-linked Go binary for Linux
 RUN CGO_ENABLED=0 GOOS=linux go build -a -o main .
 
-## Second stage - Run stage
+# New build phase -- create binary-only image
 FROM alpine:latest
 
-# Set up the working directory
-WORKDIR /temokpae_agent
+# Add support for HTTPS
+RUN apk update && \
+    apk upgrade && \
+    apk add ca-certificates
+WORKDIR /root/
 
-# Copy the executable binary file and env file from the last stage to the new stage
-COPY --from=builder /temokpae_agent/main .
+# Copy files from previous build container
+COPY --from=build /go/src/my-golang-source-code/main ./
 
 # Add environment variables
-ENV LOGGLY_TOKEN="LOGGLY_TOKEN"
+# ENV ...
 
 # Check results
-RUN env
+RUN env && pwd && find .
 
-# Execute the build
+# Start the application
 CMD ["./main"]
