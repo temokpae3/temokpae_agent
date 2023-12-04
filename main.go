@@ -53,7 +53,6 @@ func pollData() {
 		panic(err)
 	}
 
-	defer resp.Body.Close()
 	fmt.Println("Response Status:", resp.Status)
 
 	// Read the response body
@@ -61,6 +60,9 @@ func pollData() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Close the response body
+	resp.Body.Close()
 
 	// Parse the JSON and display info in the terminal
 	var apidata []APIData
