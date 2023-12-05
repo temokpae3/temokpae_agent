@@ -41,6 +41,8 @@ type APIData struct {
 	Thumb              string `json:"thumb"`
 }
 
+var httpClient = &http.Client{}
+
 func pollData() {
 	fmt.Println("Starting...")
 
@@ -48,7 +50,7 @@ func pollData() {
 	client := loggly.New(os.Getenv("LOGGLY_TOKEN"))
 
 	// Call CheapShark API
-	resp, err := http.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1&pageSize=30")
+	resp, err := httpClient.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1&pageSize=10")
 	if err != nil {
 		panic(err)
 	}
@@ -58,7 +60,7 @@ func pollData() {
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error reading response body:", err)
 	}
 
 	// Close the response body
@@ -68,7 +70,7 @@ func pollData() {
 	var apidata []APIData
 	parsedata := json.Unmarshal(body, &apidata)
 	if parsedata != nil {
-		log.Fatal(parsedata)
+		client.EchoSend("error", "Could not parse data."+parsedata.Error())
 	}
 
 	formattedData, _ := json.MarshalIndent(apidata, "", "  ")
@@ -79,7 +81,6 @@ func pollData() {
 	log := client.EchoSend("info", "Successful data collection of size: "+respSize)
 	if log != nil {
 		client.EchoSend("error", "Could not send data collection."+log.Error())
-		os.Exit(1)
 	}
 
 	// Initialize a AWS session
@@ -104,8 +105,7 @@ func pollData() {
 	// Performs the scan operation
 	result, err := svc.Scan(scan)
 	if err != nil {
-		fmt.Println("Got error calling Scan:", err)
-		os.Exit(1)
+		client.EchoSend("error", "Got error calling Scan: "+err.Error())
 	}
 
 	// Displays the items and deletes them
@@ -130,7 +130,6 @@ func pollData() {
 		_, err = svc.DeleteItem(deleteInput)
 		if err != nil {
 			client.EchoSend("error", "Got error calling DeleteItem: "+err.Error())
-			os.Exit(1)
 		}
 
 		fmt.Println("Successfully deleted item from DynamoDB", item["internalName"])
@@ -141,7 +140,6 @@ func pollData() {
 		av, err := dynamodbattribute.MarshalMap(item)
 		if err != nil {
 			client.EchoSend("error", "Got error marshalling map: "+err.Error())
-			os.Exit(1)
 		}
 
 		input := &dynamodb.PutItemInput{
@@ -152,7 +150,6 @@ func pollData() {
 		_, err = svc.PutItem(input)
 		if err != nil {
 			client.EchoSend("error", "Got error calling PutItem: "+err.Error())
-			os.Exit(1)
 		}
 
 		fmt.Println("Successfully added item to DynamoDB:", item.InternalName)
@@ -166,12 +163,11 @@ func pollData() {
 }
 
 func main() {
-	go func() {
-		ticker := time.NewTicker(15 * time.Minute)
-		for range ticker.C {
-			pollData()
-		}
-	}()
+	// Use time.Tick to execute pollData at 15-minute intervals
+	ticker := time.Tick(15 * time.Minute)
 
-	select {}
+	// Loop to run pollData at intervals
+	for range ticker {
+		pollData()
+	}
 }
