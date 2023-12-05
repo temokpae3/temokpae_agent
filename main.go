@@ -97,45 +97,7 @@ func pollData() {
 	//Input an item in test-table-temokpae
 	tableName := "test-table-temokpae"
 
-	// Create the input for the Scan operation
-	scan := &dynamodb.ScanInput{
-		TableName: aws.String(tableName),
-	}
-
-	// Performs the scan operation
-	result, err := svc.Scan(scan)
-	if err != nil {
-		client.EchoSend("error", "Got error calling Scan: "+err.Error())
-	}
-
-	// Displays the items and deletes them
-	for _, item := range result.Items {
-		internalNameAttribute, ok := item["internalName"]
-		if !ok || internalNameAttribute.S == nil {
-			fmt.Println("internalName attribute not found or is nil")
-			continue
-		}
-		key := map[string]*dynamodb.AttributeValue{
-			"internalName": {
-				S: internalNameAttribute.S,
-			},
-		}
-		// Creates the input for the DeleteItem operation
-		deleteInput := &dynamodb.DeleteItemInput{
-			TableName: aws.String(tableName),
-			Key:       key,
-		}
-
-		// Performs the delete operation
-		_, err = svc.DeleteItem(deleteInput)
-		if err != nil {
-			client.EchoSend("error", "Got error calling DeleteItem: "+err.Error())
-		}
-
-		fmt.Println("Successfully deleted item from DynamoDB", item["internalName"])
-	}
-
-	// Displays the new items to be added to DynamoDB
+	// Displays items added to DynamoDB
 	for _, item := range apidata {
 		av, err := dynamodbattribute.MarshalMap(item)
 		if err != nil {
