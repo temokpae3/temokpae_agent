@@ -51,9 +51,6 @@ func retrieveAPI() (*http.Response, error) {
 		return nil, err
 	}
 
-	// Close the api response body
-	resp.Body.Close()
-
 	fmt.Println("Response Status:", resp.Status)
 
 	if resp.StatusCode != http.StatusOK {
