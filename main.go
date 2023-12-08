@@ -41,31 +41,32 @@ type APIData struct {
 	Thumb              string `json:"thumb"`
 }
 
-// HTTP client
-var httpClient = &http.Client{}
-
 // Instantiate the Loggly client
 var client = loggly.New(os.Getenv("LOGGLY_TOKEN"))
 
-func retrieveAPI() {
-	resp, err := httpClient.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1&pageSize=10")
+func retrieveAPI() (*http.Response, error) {
+	resp, err := http.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1&pageSize=10")
 	if err != nil {
 		client.EchoSend("error", "Could not retrieve API."+err.Error())
+		return nil, err
 	}
+
+	// Close the api response body
+	resp.Body.Close()
 
 	fmt.Println("Response Status:", resp.Status)
 
 	if resp.StatusCode != http.StatusOK {
 		client.EchoSend("error", "Status code is not OK.")
+		return nil, fmt.Errorf("status code is not ok: %s", resp.Status)
 	}
+
+	return resp, nil
 }
 
 var apidata []APIData
 
-func readAndParseJSON() {
-	// response variable
-	var resp *http.Response
-
+func readAndParseJSON(resp *http.Response) {
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -73,14 +74,14 @@ func readAndParseJSON() {
 		log.Fatal("Error reading response body:", err.Error())
 	}
 
-	// Close the response body
-	resp.Body.Close()
-
 	// Parse the JSON and display info in the terminal
 	parsedata := json.Unmarshal(body, &apidata)
 	if parsedata != nil {
 		client.EchoSend("error", "Could not parse data."+parsedata.Error())
 	}
+
+	// Close the response body
+	resp.Body.Close()
 
 	formattedData, _ := json.MarshalIndent(apidata, "", "  ")
 	fmt.Println(string(formattedData))
@@ -137,10 +138,14 @@ func storeDynamoDB() {
 
 func pollData() {
 	// Call the API function
-	retrieveAPI()
+	resp, err := retrieveAPI()
+	if err != nil {
+		fmt.Println("Error retrieving API:", err.Error())
+		return
+	}
 
 	// Get the response body
-	readAndParseJSON()
+	readAndParseJSON(resp)
 
 	// Store the data in DynamoDB
 	storeDynamoDB()
