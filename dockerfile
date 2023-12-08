@@ -12,7 +12,7 @@ RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -a -o main .
 
 # New build phase -- create binary-only image
-FROM alpine:latest
+FROM public.ecr.aws/docker/library/alpine:latest
 
 # Add support for HTTPS
 RUN apk update && \
