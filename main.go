@@ -41,33 +41,42 @@ type APIData struct {
 	Thumb              string `json:"thumb"`
 }
 
+// HTTP client
 var httpClient = &http.Client{}
 
-func pollData() {
-	fmt.Println("Starting...")
+// Instantiate the Loggly client
+var client = loggly.New(os.Getenv("LOGGLY_TOKEN"))
 
-	// Instantiate the Loggly client
-	client := loggly.New(os.Getenv("LOGGLY_TOKEN"))
-
-	// Call CheapShark API
+func retrieveAPI() {
 	resp, err := httpClient.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1&pageSize=10")
 	if err != nil {
-		panic(err)
+		client.EchoSend("error", "Could not retrieve API."+err.Error())
 	}
 
 	fmt.Println("Response Status:", resp.Status)
 
+	if resp.StatusCode != http.StatusOK {
+		client.EchoSend("error", "Status code is not OK.")
+	}
+}
+
+var apidata []APIData
+
+func readAndParseJSON() {
+	// response variable
+	var resp *http.Response
+
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal("Error reading response body:", err)
+		resp.Body.Close()
+		log.Fatal("Error reading response body:", err.Error())
 	}
 
 	// Close the response body
 	resp.Body.Close()
 
 	// Parse the JSON and display info in the terminal
-	var apidata []APIData
 	parsedata := json.Unmarshal(body, &apidata)
 	if parsedata != nil {
 		client.EchoSend("error", "Could not parse data."+parsedata.Error())
@@ -82,7 +91,9 @@ func pollData() {
 	if log != nil {
 		client.EchoSend("error", "Could not send data collection."+log.Error())
 	}
+}
 
+func storeDynamoDB() {
 	// Initialize a AWS session
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		Config: aws.Config{
@@ -94,7 +105,7 @@ func pollData() {
 	// Create DynamoDB client
 	svc := dynamodb.New(sess)
 
-	//Input an item in test-table-temokpae
+	//Table name
 	tableName := "test-table-temokpae"
 
 	// Displays items added to DynamoDB
@@ -118,18 +129,29 @@ func pollData() {
 	}
 
 	// Send a Success message about DynamoDB to Loggly
-	log = client.EchoSend("info", "Successfully added all the game data into DynamoDB.")
+	log := client.EchoSend("info", "Successfully added all the game data into DynamoDB.")
 	if log != nil {
 		client.EchoSend("error", "Error adding game data into DynamoDB: "+log.Error())
 	}
 }
 
-func main() {
-	// Use time.Tick to execute pollData at 15-minute intervals
-	ticker := time.Tick(15 * time.Minute)
+func pollData() {
+	// Call the API function
+	retrieveAPI()
 
+	// Get the response body
+	readAndParseJSON()
+
+	// Store the data in DynamoDB
+	storeDynamoDB()
+}
+
+func main() {
 	// Loop to run pollData at intervals
-	for range ticker {
+	for {
 		pollData()
+
+		// Sleep duration between each poll
+		time.Sleep(time.Duration(15) * time.Minute)
 	}
 }
