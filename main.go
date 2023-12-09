@@ -44,42 +44,43 @@ type APIData struct {
 // Instantiate the Loggly client
 var client = loggly.New(os.Getenv("LOGGLY_TOKEN"))
 
-func retrieveAPI() (*http.Response, error) {
-	resp, err := http.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1&pageSize=10")
+func retrieveAPI() *http.Response {
+	resp, err := http.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1")
 	if err != nil {
 		client.EchoSend("error", "Could not retrieve API."+err.Error())
-		return nil, err
 	}
 
 	fmt.Println("Response Status:", resp.Status)
 
 	if resp.StatusCode != http.StatusOK {
 		client.EchoSend("error", "Status code is not OK.")
-		return nil, fmt.Errorf("status code is not ok: %s", resp.Status)
 	}
 
-	return resp, nil
+	return resp
 }
 
-var apidata []APIData
-
-func readAndParseJSON(resp *http.Response) {
+func readAndParseJSON(resp *http.Response) []APIData {
 	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		resp.Body.Close()
-		log.Fatal("Error reading response body:", err.Error())
+	body, parsedata := io.ReadAll(resp.Body)
+	if parsedata != nil {
+		log.Fatal("Error reading response body:", parsedata.Error())
 	}
 
+	// Define an array of APIData
+	var apidata []APIData
+
 	// Parse the JSON and display info in the terminal
-	parsedata := json.Unmarshal(body, &apidata)
+	parsedata = json.Unmarshal(body, &apidata)
 	if parsedata != nil {
 		client.EchoSend("error", "Could not parse data."+parsedata.Error())
 	}
 
-	// Close the response body
-	resp.Body.Close()
+	// Limit the length of the array
+	if len(apidata) > 10 {
+		apidata = apidata[:10]
+	}
 
+	// Format the data to be more readable
 	formattedData, _ := json.MarshalIndent(apidata, "", "  ")
 	fmt.Println(string(formattedData))
 
@@ -89,9 +90,11 @@ func readAndParseJSON(resp *http.Response) {
 	if log != nil {
 		client.EchoSend("error", "Could not send data collection."+log.Error())
 	}
+
+	return apidata
 }
 
-func storeDynamoDB() {
+func storeDynamoDB(apidata []APIData) {
 	// Initialize a AWS session
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		Config: aws.Config{
@@ -135,17 +138,16 @@ func storeDynamoDB() {
 
 func pollData() {
 	// Call the API function
-	resp, err := retrieveAPI()
-	if err != nil {
-		fmt.Println("Error retrieving API:", err.Error())
-		return
-	}
+	resp := retrieveAPI()
 
-	// Get the response body
-	readAndParseJSON(resp)
+	// Call the readAndParse function
+	apiData := readAndParseJSON(resp)
+
+	// Close the response body
+	resp.Body.Close()
 
 	// Store the data in DynamoDB
-	storeDynamoDB()
+	storeDynamoDB(apiData)
 }
 
 func main() {
