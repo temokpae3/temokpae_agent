@@ -45,6 +45,9 @@ type APIData struct {
 var client = loggly.New(os.Getenv("LOGGLY_TOKEN"))
 
 func retrieveAPI() *http.Response {
+	fmt.Println("Starting...")
+
+	// Gets the API endpoint
 	resp, err := http.Get("https://www.cheapshark.com/api/1.0/deals?storeID=1&sortBy=Recent&steamworks=1&onSale=1&hideDuplicates=1")
 	if err != nil {
 		client.EchoSend("error", "Could not retrieve API."+err.Error())
@@ -52,6 +55,7 @@ func retrieveAPI() *http.Response {
 
 	fmt.Println("Response Status:", resp.Status)
 
+	// If the response is not OK, send an error
 	if resp.StatusCode != http.StatusOK {
 		client.EchoSend("error", "Status code is not OK.")
 	}
@@ -75,7 +79,7 @@ func readAndParseJSON(resp *http.Response) []APIData {
 		client.EchoSend("error", "Could not parse data."+parsedata.Error())
 	}
 
-	// Limit the length of the array
+	// Limit the length of the apidata array
 	if len(apidata) > 10 {
 		apidata = apidata[:10]
 	}
